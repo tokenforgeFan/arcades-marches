@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Arcade des Marchés</title>
+<meta name="theme-color" content="#2B3FD6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Arcade">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout : une colonne étroite ; barre fixe en haut avec l'accès aux fiches ; chaque jeu occupe tout l'écran utile. */
+:root{
+  --bg:#EEF1F6; --surface:#FFFFFF; --ink:#131A2B; --muted:#5A6478; --line:#D5DAE4;
+  --accent:#2B3FD6; --on-accent:#FFFFFF; --accent-soft:#E3E7FB;
+  --yes:#0E8A5F; --yes-bg:#DDF3EA; --no:#C8402F; --no-bg:#FBE4DF; --gold:#B7791F;
+  --display:"Bricolage Grotesque","Trebuchet MS",sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1422; --surface:#182033; --ink:#E8ECF5; --muted:#9AA4BA; --line:#2A344C;
+  --accent:#8C9BFF; --on-accent:#0F1422; --accent-soft:#232C4D;
+  --yes:#3CCB95; --yes-bg:#12352B; --no:#FF8370; --no-bg:#40201C; --gold:#E5B455; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F1422; --surface:#182033; --ink:#E8ECF5; --muted:#9AA4BA; --line:#2A344C;
+  --accent:#8C9BFF; --on-accent:#0F1422; --accent-soft:#232C4D;
+  --yes:#3CCB95; --yes-bg:#12352B; --no:#FF8370; --no-bg:#40201C; --gold:#E5B455; color-scheme:dark }
+
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-block:16px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.8rem,6vw,2.5rem);font-weight:700;letter-spacing:-.02em}
+h2{font-size:1.4rem;font-weight:700} h3{font-size:1.05rem;font-weight:500}
+p{margin:0}
+.oui{color:var(--yes)} .non{color:var(--no)} .muted{color:var(--muted)} .small{font-size:.9rem}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:.75rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.link{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:6px 2px}
+.pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:inherit;color:var(--ink);cursor:pointer;font-weight:600}
+.pill:hover{border-color:var(--accent);color:var(--accent)}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:10px;padding:12px 20px;font:inherit;font-weight:600;cursor:pointer;align-self:flex-start}
+.btn:hover{filter:brightness(1.08)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.game{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:16px;font:inherit;color:inherit;cursor:pointer;transition:transform .15s,border-color .15s}
+.game:hover{border-color:var(--accent);transform:translateY(-2px)}
+.game .g{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.game .g b{font-family:var(--display);font-size:1.2rem}
+.game .rec{flex:none;text-align:right;font-size:.82rem;color:var(--muted)}
+.game .rec b{display:block;font-family:var(--mono);font-size:1.05rem;color:var(--gold)}
+.tag{flex:none;width:52px;height:52px;border-radius:12px;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:.8rem}
+.tag.a{background:var(--yes-bg);color:var(--yes)} .tag.b{background:var(--accent-soft);color:var(--accent)} .tag.c{background:var(--no-bg);color:var(--no)}
+
+.prog{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent)}
+.hud{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+.hud b{font-family:var(--mono);font-size:1.25rem}
+.card{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:28px 20px;min-height:150px;display:grid;place-items:center;text-align:center;
+  font-family:var(--display);font-size:1.35rem;font-weight:500;line-height:1.3;text-wrap:balance}
+.vf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vf button{border:0;border-radius:14px;padding:18px 10px;font-family:var(--display);font-size:1.3rem;font-weight:700;cursor:pointer}
+.vf .f{background:var(--no-bg);color:var(--no)} .vf .v{background:var(--yes-bg);color:var(--yes)}
+.vf button:hover{filter:brightness(.96)}
+.fb{border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.fb.ok{background:var(--yes-bg)} .fb.ko{background:var(--no-bg)}
+.fb .res{font-family:var(--mono);font-weight:700} .fb.ok .res{color:var(--yes)} .fb.ko .res{color:var(--no)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip:disabled{opacity:.4;text-decoration:line-through;cursor:default}
+.def{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;color:inherit;cursor:pointer}
+.def:not(:disabled):hover{border-color:var(--accent)}
+.def.done{background:var(--yes-bg);border-color:var(--yes);cursor:default}
+.def.bad{background:var(--no-bg);border-color:var(--no)}
+.def b{color:var(--yes)}
+
+.mkt{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mkt div{border-radius:12px;padding:12px;text-align:center;font-weight:600}
+.mkt .o{background:var(--yes-bg);color:var(--yes)} .mkt .n{background:var(--no-bg);color:var(--no)}
+.mkt b{display:block;font-family:var(--mono);font-size:1.6rem}
+.choice{display:flex;justify-content:space-between;gap:12px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:14px;font:inherit;font-weight:600;color:inherit;cursor:pointer}
+.choice:hover{border-color:var(--accent)}
+.choice span{font-family:var(--mono);font-weight:500;font-size:.85rem;color:var(--muted);flex:none}
+.big{font-family:var(--mono);font-size:2.3rem;font-weight:700;line-height:1}
+.row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end}
+.line{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding-top:10px}
+.line>span:first-child{min-width:0}
+.miss{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:2px;font-size:.94rem}
+input.search{width:100%;box-sizing:border-box;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit}
+.fiche{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+html,body{-webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior-y:none}
+button{user-select:none;-webkit-user-select:none}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (min-width:700px){ body{font-size:18px} .wrap{max-width:860px} .card{font-size:1.6rem;min-height:190px} .vf button{padding:26px 10px;font-size:1.6rem} .choice,.def{padding:18px} .chip{padding:12px 18px} }
+.snd{min-width:44px}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="bar">
+    <button class="link" data-act="home" style="padding-left:0">Arcade · Session 6</button>
+    <span style="display:flex;gap:8px"><button class="pill snd" data-act="snd" id="sbtn" aria-label="Son">Son : oui</button><button class="pill" data-act="fiches" id="fbtn">Fiches de révision</button></span>
+  </div>
+  <main id="app" class="stack"></main>
+</div>
+
+<script>
+const NOTIONS = [
+ ["Marché prédictif","Un marché qui donne un prix à l'information sur un événement futur","« Arsenal gagnera-t-il la Ligue des champions ? »"],
+ ["Contrat binaire","OUI paie 1 $ si la condition est remplie, 0 sinon ; NON fait l'inverse","Une paire OUI + NON paie toujours 1 $"],
+ ["Probabilité implicite","Le prix du OUI lu comme une probabilité estimée par le marché","OUI à 0,72 $ ≈ 72 %"],
+ ["Sagesse des foules","La moyenne de nombreux avis indépendants bat souvent les experts isolés","Le bœuf de Galton : médiane à moins de 1 % du poids réel"],
+ ["Arbitrage","Un profit sans risque quand les prix sont incohérents","OUI + NON à 0,97 $ : acheter la paire rapporte 0,03 $"],
+ ["Couverture (hedging)","Utiliser un marché pour compenser une perte liée à un événement","Un festival achète des OUI « pluie » pour protéger sa recette"],
+ ["Spread","L'écart entre le meilleur prix de vente (ask) et le meilleur prix d'achat (bid)","Bid 17 ¢, ask 18 ¢ : spread de 1 ¢"],
+ ["Volume","Ce qui s'est échangé sur une période","Un pic signale souvent une nouvelle information"],
+ ["Intérêt ouvert","Les contrats encore en circulation, pas l'argent en jeu","S'il grimpe : de l'argent frais entre, parfois un seul gros trader"],
+ ["Carnet d'ordres (CLOB)","Acheteurs et vendeurs affichent leurs prix, les ordres se croisent en continu","Kalshi, et Polymarket (hors chaîne)"],
+ ["AMM","Une formule qui donne toujours un prix, même sans personne en face","Omen, Augur ; utile sur les marchés peu actifs"],
+ ["Risque de contrepartie","Devoir croire que la plateforme garde bien tes fonds","Retraits gelés, gagnants limités"],
+ ["Contrat intelligent","Un programme sur la blockchain qui garde les fonds et paie les gagnants","Il exécute ce que dit l'oracle, sans réfléchir"],
+ ["Stablecoin","Une crypto au prix stable, utilisée pour régler les marchés","L'USDC sur Polymarket"],
+ ["Oracle","Le pont qui dit à la blockchain ce qui s'est passé dans le monde réel","Oracle compromis = mauvais règlement"],
+ ["Oracle optimiste","Le résultat proposé est accepté, sauf contestation pendant un délai","UMA : après deux contestations, les détenteurs du jeton votent"],
+ ["Période de contestation","Le délai laissé à chacun pour corriger un résultat faux avant le paiement","Il faut que quelqu'un surveille"],
+ ["KYC","La vérification d'identité imposée par une plateforme régulée","Obligatoire sur Kalshi"],
+ ["Délit d'initié","Trader avec une information que le public n'a pas","Paris sur la capture de Maduro : 9 800 $ devenus 133 000 $"],
+ ["Sélection adverse","Les traders ordinaires fuient un marché où les initiés gagnent","Prix plus justes à court terme, marché moins précis à long terme"],
+ ["Attaque Sybil","Une seule personne cachée derrière de nombreux comptes","Facile quand créer un portefeuille est gratuit et anonyme"],
+ ["Réflexivité","La prédiction influence l'événement prédit","Un candidat à 80 % attire les donateurs"],
+ ["Aléa moral","Le marché paie quelqu'un qui peut provoquer le résultat","Le débat sur les marchés d'assassinats"],
+ ["Wash trading","S'échanger des contrats à soi-même pour gonfler le volume","Facilité par les comptes pseudonymes"]
+];
+
+const VF = [
+ ["Un contrat OUI gagnant paie 1 $.",true,"OUI paie 1 $ si la condition est remplie, 0 $ sinon."],
+ ["Un OUI à 0,65 $ signifie que 65 % des gens ont voté oui.",false,"C'est une probabilité estimée par le marché (environ 65 %), pas un vote."],
+ ["On est obligé de garder son contrat jusqu'au résultat final.",false,"On peut revendre avant : acheté 0,30, revendu 0,50, c'est 0,20 $ de gain quel que soit le résultat."],
+ ["Une paire OUI + NON paie toujours 1 $.",true,"L'un des deux gagne forcément. C'est ce qui rend l'arbitrage possible."],
+ ["Le spread est l'écart entre le meilleur prix de vente et le meilleur prix d'achat.",true,"Spread = ask − bid."],
+ ["Un spread large signale un marché très liquide.",false,"C'est l'inverse : spread large = peu d'acteurs, prix moins fiable."],
+ ["L'intérêt ouvert mesure les contrats encore en circulation.",true,"À ne pas confondre avec le volume, qui mesure ce qui s'est échangé."],
+ ["Un sondage et un marché mesurent la même chose.",false,"Le sondage mesure une intention ; le marché, ce que les traders sont prêts à risquer."],
+ ["Sur un marché, les grosses mises pèsent plus sur le prix.",true,"Le marché pondère par l'argent. Mais l'argent n'est pas le savoir."],
+ ["Dans l'expérience de Galton, la foule s'est trompée de 30 % sur le poids du bœuf.",false,"La médiane des 800 estimations est tombée à moins de 1 % du poids réel."],
+ ["Un AMM donne toujours un prix, même sur un marché peu actif.",true,"Toujours un prix, pas toujours un bon prix."],
+ ["Kalshi est régulé par la CFTC et vérifie l'identité de ses utilisateurs.",true,"Bourse centralisée américaine, KYC obligatoire, paris en dollars."],
+ ["Polymarket utilise le dollar classique comme collatéral.",false,"Polymarket utilise l'USDC, un stablecoin. C'est Kalshi qui utilise le dollar."],
+ ["Chez Polymarket, le carnet d'ordres est sur la blockchain.",false,"Le carnet est hors chaîne (serveurs de Polymarket). Les fonds et le règlement sont on-chain."],
+ ["Une blockchain peut vérifier seule le résultat d'un match.",false,"Elle ne voit que ses propres données. Il lui faut un oracle."],
+ ["Avec un oracle optimiste, un résultat non contesté pendant le délai est validé.",true,"D'où l'importance que quelqu'un surveille."],
+ ["Avec UMA, après deux contestations, les détenteurs du jeton UMA votent.",true,"Ils ont le dernier mot : un système « ploutocratique »."],
+ ["Si l'oracle annonce un faux résultat non contesté, le contrat intelligent refuse de payer.",false,"Le contrat exécute ce que dit l'oracle : les mauvais gagnants sont payés, sans recours."],
+ ["On règle en stablecoins pour que le prix ne reflète que la probabilité.",true,"Avec de l'ETH, une baisse de la crypto pourrait effacer un gain « juste »."],
+ ["Le sport pèse environ 79 % du volume de Kalshi et Polymarket (juillet 2026).",true,"Les élections font parler, mais le sport domine."],
+ ["Chez un bookmaker, on parie contre d'autres joueurs.",false,"On parie contre le bookmaker, qui fixe les cotes avec sa marge. Sur un marché, on parie contre d'autres traders."],
+ ["Un marché prédictif gagne de l'argent quand ses utilisateurs perdent.",false,"Il vit des frais de transaction. C'est le bookmaker qui gagne quand tu perds."],
+ ["Une attaque Sybil, c'est une personne derrière de nombreux comptes.",true,"Créer un portefeuille est gratuit et anonyme."],
+ ["Le délit d'initié rend un marché plus précis à long terme.",false,"À court terme oui ; à long terme les traders ordinaires fuient et le marché se dégrade."],
+ ["Lors du piratage de Polymarket fin octobre 2026, des clés privées ont été volées.",false,"Aucune clé volée : un script tiers du site a utilisé les autorisations déjà données."],
+ ["La réflexivité, c'est quand la prédiction influence l'événement.",true,"Comme une panique bancaire : croire à la faillite la provoque."],
+ ["Aux États-Unis, la plupart des États veulent traiter ces marchés comme des jeux d'argent.",true,"La CFTC, elle, les voit comme des contrats dérivés. L'affaire devrait aller à la Cour suprême."],
+ ["Passer par un VPN pour contourner une restriction de pays est sans risque.",false,"Cela viole les conditions d'utilisation : bannissement ou perte des fonds possibles."],
+ ["Acheter un OUI à 0,40 $ et gagner rapporte 0,60 $ net par contrat.",true,"1 $ reçu − 0,40 $ payé = 0,60 $, soit +150 %."],
+ ["La vie d'un marché : création, négociation, résolution, règlement.",true,"L'oracle intervient à la résolution, après l'événement."],
+ ["Augur (2018) a été le premier marché décentralisé sur Ethereum.",true,"Polymarket est arrivé en 2020, Kalshi en 2021."],
+ ["Plus de 90 % du volume passe par des plateformes décentralisées.",false,"Plus de 90 % passe par des plateformes centralisées."],
+ ["Sur Polymarket, un ordre au marché est en fait un ordre limité exécuté tout de suite.",true,"Tous les ordres y sont techniquement des ordres à cours limité."],
+ ["L'arbitrage est un profit sans risque quand les prix sont incohérents.",true,"Exemple : OUI + NON à moins de 1 $."],
+ ["Un marché à faible volume donne un chiffre aussi fiable qu'un marché très actif.",false,"Peu de participants = estimation très imprécise."],
+ ["Se couvrir, c'est utiliser un marché pour compenser une perte liée à un événement.",true,"Le festival qui achète des OUI « pluie »."]
+];
+
+const rnd = p => Math.random() < p;
+const SC = [
+ {t:"Le festival sous les nuages", c:"Prix, probabilité et revente", q:"Pleuvra-t-il samedi sur le festival ?", m:[30,70],
+  lesson:"Le prix bouge avec les nouvelles. Revendre avant la fin verrouille un gain (ou limite une perte) quel que soit le résultat. Garder, c'est accepter le hasard : même à 0,55 $, le OUI perd encore 45 fois sur 100.",
+  nodes:{
+   a:{x:"Le ciel se couvre et tu as un avis sur la météo. Que fais-tu ?", ch:[
+     {l:"Acheter 100 OUI à 0,30 $", s:"coût 30 $", f:c=>{c.pos="oui";return{to:"b"}}},
+     {l:"Acheter 100 NON à 0,70 $", s:"coût 70 $", f:c=>{c.pos="non";return{to:"b"}}},
+     {l:"Passer mon tour", f:()=>({d:0,r:"Tu observes sans miser. Pendant ce temps, un flash météo fait passer le OUI de 0,30 à 0,55 $."})}]},
+   b:{m:[55,45], x:"Flash météo : un front orageux approche. Le OUI grimpe à 0,55 $, le NON tombe à 0,45 $.", ch:[
+     {l:"Revendre maintenant", f:c=> c.pos==="oui" ? {d:25,r:"Acheté 30 $, revendu 55 $. Gain verrouillé, qu'il pleuve ou non."} : {d:-25,r:"Acheté 70 $, revendu 45 $. Tu limites la casse : s'il pleut, tu aurais tout perdu."}},
+     {l:"Garder jusqu'à samedi", f:c=>{ const rain=rnd(.55);
+        if(c.pos==="oui") return rain ? {d:70,r:"Il pleut samedi. Tes 100 OUI paient 100 $."} : {d:-30,r:"Grand soleil samedi. Tes OUI valent 0 $."};
+        return rain ? {d:-70,r:"Il pleut samedi. Tes NON valent 0 $."} : {d:30,r:"Grand soleil samedi. Tes 100 NON paient 100 $."}; }}]}
+  }},
+ {t:"La paire à 97 centimes", c:"Arbitrage", q:"La banque centrale baissera-t-elle son taux jeudi ?", m:[45,52],
+  lesson:"Une paire OUI + NON paie toujours 1 $. Si elle coûte moins, l'acheter garantit un gain : c'est l'arbitrage. Dans la réalité, des robots ramassent ces écarts en quelques secondes, et un écart apparent cache souvent des frais ou des règles différentes.",
+  nodes:{
+   a:{x:"Regarde bien les deux prix. Quelque chose cloche.", ch:[
+     {l:"Acheter 100 OUI et 100 NON", s:"coût 97 $", f:()=>({d:3,r:"Quoi qu'il arrive, l'un des deux paie 100 $. Tu as payé 97 $ : 3 $ gagnés sans aucun risque."})},
+     {l:"Acheter 100 OUI seulement", s:"coût 45 $", f:()=> rnd(.46) ? {d:55,r:"Le taux baisse. Tes OUI paient 100 $. Mais tu as pris un risque alors qu'un gain garanti était sur la table."} : {d:-45,r:"Le taux ne bouge pas. Tes OUI valent 0 $. Il y avait pourtant un gain sans risque à prendre."}},
+     {l:"Passer mon tour", f:()=>({d:0,r:"Tu laisses passer 3 $ gratuits : 0,45 + 0,52 = 0,97 $ pour une paire qui paie toujours 1 $."})}]}
+  }},
+ {t:"Le marché désert", c:"Spread et liquidité", q:"Le maire de Petitbourg sera-t-il réélu ?", book:[20,40],
+  lesson:"Un spread large signale un marché peu liquide. Le chiffre affiché (30 %, le milieu) repose sur presque personne, et y entrer puis en sortir coûte cher. La profondeur dit combien d'échanges soutiennent un prix, pas si ce prix est juste.",
+  nodes:{
+   a:{x:"Trois traders en tout. Le meilleur acheteur propose 0,20 $, le meilleur vendeur demande 0,40 $.", ch:[
+     {l:"Acheter 100 OUI tout de suite", s:"au ask : 40 $", f:()=>({to:"b"})},
+     {l:"Placer un ordre d'achat à 0,30 $ et attendre", f:()=>({d:0,r:"Ton ordre attend dans le carnet. Personne ne veut vendre à ce prix. Rien ne se passe, et tu n'as rien perdu."})},
+     {l:"Passer : trop peu de monde", f:()=>({d:0,r:"Bon réflexe. Sur un marché aussi vide, le prix affiché ne veut pas dire grand-chose."})}]},
+   b:{x:"Dix minutes plus tard, tu doutes. Pour revendre, le seul acheteur propose toujours 0,20 $.", ch:[
+     {l:"Revendre à 0,20 $", f:()=>({d:-20,r:"Acheté 40 $, revendu 20 $. Tu as perdu 20 $ sans que rien n'ait changé : c'est le coût du spread."})},
+     {l:"Garder jusqu'à l'élection", f:()=> rnd(.3) ? {d:60,r:"Le maire est réélu. Tes OUI paient 100 $. Coup de chance : tu avais payé 0,40 $ une chose estimée à 30 %."} : {d:-40,r:"Le maire est battu. Tes OUI valent 0 $."}}]}
+  }},
+ {t:"Les petites lignes", c:"Les règles sont le contrat", q:"TechCorp vendra-t-elle ses bitcoins avant le 31 mai ?", m:[35,65],
+  lesson:"Histoire vraie : en mai 2026, sur un marché de plus de 60 M$ concernant MicroStrategy, la vente avait bien eu lieu mais n'était pas publique à la date limite. Deux contestations, puis vote des détenteurs UMA : NON. Le prix est une estimation, les règles sont le contrat.",
+  nodes:{
+   a:{x:"Nous sommes le 30 mai. Une rumeur sérieuse dit que la vente est déjà faite, mais rien d'officiel.", ch:[
+     {l:"Lire les règles du marché d'abord", s:"gratuit", f:()=>({to:"b"})},
+     {l:"Acheter 100 OUI à 0,35 $", s:"coût 35 $", f:()=>({d:-35,r:"La vente avait bien eu lieu, mais elle n'a été annoncée que le 1er juin. Selon les règles, le marché est résolu NON. Tu avais raison sur les faits, et tu perds quand même."})},
+     {l:"Passer mon tour", f:()=>({d:0,r:"Tu évites le piège. Le marché sera résolu NON : la vente n'a été rendue publique qu'après la date limite."})}]},
+   b:{x:"Règles : « OUI uniquement si la vente est annoncée publiquement avant le 31 mai. » Aucune annonce n'est prévue d'ici demain.", ch:[
+     {l:"Acheter 100 NON à 0,65 $", s:"coût 65 $", f:()=>({d:35,r:"Aucune annonce avant le 31. Résultat : NON. Tes 100 NON paient 100 $. Lire les règles t'a rapporté 35 $."})},
+     {l:"Acheter 100 OUI à 0,35 $ quand même", s:"coût 35 $", f:()=>({d:-35,r:"La vente n'est annoncée que le 1er juin. Résultat : NON. Les règles t'avaient prévenu."})},
+     {l:"Passer mon tour", f:()=>({d:0,r:"Prudent. Le marché est résolu NON, faute d'annonce publique à temps."})}]}
+  }},
+ {t:"Le compte mystère", c:"Délit d'initié", q:"Le président Ruiz quittera-t-il le pouvoir avant vendredi ?", m:[9,91],
+  lesson:"Quand des initiés tradent, le prix devient plus juste à court terme. Mais les traders ordinaires, qui perdent contre ceux qui savent déjà, finissent par partir : c'est la sélection adverse, et le marché se dégrade. Cas réel du cours : autour de la capture de Maduro, six portefeuilles ont transformé 9 800 $ en 133 000 $. Les premières poursuites pour délit d'initié ont commencé.",
+  nodes:{
+   a:{x:"Un portefeuille créé hier vient de miser 30 000 $ sur le OUI. Il ne parie que sur ce pays, et n'a jamais perdu.", ch:[
+     {l:"Le suivre : 200 OUI à 0,09 $", s:"coût 18 $", f:()=> rnd(.6) ? {d:182,r:"Ruiz est renversé jeudi. Tes 200 OUI paient 200 $. Tu as gagné en copiant quelqu'un qui savait sans doute déjà."} : {d:-18,r:"Rien ne se passe avant vendredi. Le compte mystère s'était trompé, ou cherchait à attirer des suiveurs."}},
+     {l:"Parier contre lui : 100 NON à 0,91 $", s:"coût 91 $", f:()=> rnd(.6) ? {d:-91,r:"Ruiz est renversé jeudi. Tes NON valent 0 $. Tu as parié contre quelqu'un qui connaissait probablement le résultat."} : {d:9,r:"Rien ne se passe. Tes NON paient 100 $, pour 9 $ de gain. Beaucoup de risque pour peu."}},
+     {l:"Passer : je ne joue pas contre un initié", f:()=>({d:0,r:"C'est exactement ce que font les traders ordinaires quand ils sentent les initiés. Et c'est ce qui vide un marché de sa liquidité."})}]}
+  }},
+ {t:"Le guetteur", c:"Oracle optimiste", q:"L'équipe bleue gagnera-t-elle la finale ?", m:[60,40],
+  lesson:"Avec un oracle optimiste (comme UMA sur Polymarket), un résultat proposé est validé si personne ne le conteste pendant le délai. Le système ne fonctionne que si quelqu'un surveille. Un résultat faux non contesté paie les mauvais gagnants, sans recours.",
+  nodes:{
+   a:{x:"On t'offre 100 OUI. L'équipe bleue gagne 2 à 1. Mais quelqu'un propose à l'oracle le résultat NON. Fenêtre de contestation : 2 heures.", ch:[
+     {l:"Contester en déposant une caution", s:"caution 30 $", f:()=>({d:110,r:"Ta contestation est validée : résultat OUI. Tu récupères ta caution, tu touches 10 $ de récompense, et tes 100 OUI paient 100 $."})},
+     {l:"Ne rien faire, quelqu'un s'en chargera", f:()=> rnd(.5) ? {d:100,r:"Un autre trader a contesté à ta place. Résultat corrigé : tes OUI paient 100 $. Tu as eu de la chance."} : {d:0,r:"Personne n'a contesté. Le résultat NON est validé et le contrat paie les détenteurs de NON. Tes OUI valent 0 $, sans recours."}}]}
+  }}
+];
+
+
+let AC=null, SOUND=true;
+try{ SOUND = localStorage.getItem("arcade-son")!=="0"; }catch(e){}
+function beep(f,d,type,when){ if(!SOUND) return; try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); const t=AC.currentTime+(when||0);
+  const o=AC.createOscillator(), g=AC.createGain(); o.type=type||"sine"; o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.18,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t+d+.02); }catch(e){} }
+const sGood=()=>{ beep(660,.12); beep(990,.16,"sine",.09); };
+const sBad =()=>{ beep(220,.25,"triangle"); };
+const sWin =()=>{ [523,659,784,1046].forEach((f,i)=>beep(f,.18,"sine",i*.11)); };
+function sndLabel(){ const b=document.getElementById("sbtn"); if(b) b.textContent="Son : "+(SOUND?"oui":"non"); }
+const KEY="arcade-marches-v1", app=document.getElementById("app");
+let S;
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S.best)); }catch(e){} }
+function shuffle(n){ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const sgn = d => (d>=0?"+":"−")+Math.abs(d)+" $";
+const fmtT = t => { const s=Math.floor(t); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
+
+function start(data){
+  S = Object.assign({view:"home", prev:"home", best:load(), vf:null, as:null, pq:null}, data && data.S ? data.S : {});
+  render();
+}
+function render(){
+  document.getElementById("fbtn").hidden = S.view==="fiches";
+  ({home:vHome, vf:vVF, vfEnd:vVFEnd, as:vAS, asEnd:vASEnd, pq:vPQ, pqEnd:vPQEnd, fiches:vFiches})[S.view]();
+}
+
+function vHome(){
+  const b=S.best;
+  app.innerHTML = `
+  <header class="stack"><h1>L'arcade des marchés <span class="oui">prédictifs</span></h1>
+  <p class="muted">Trois jeux courts pour réviser la session 6 sans s'en rendre compte. Les fiches de révision restent accessibles à tout moment, en haut à droite : le chrono se met en pause quand tu les ouvres.</p></header>
+  <button class="game" data-act="pqStart"><span class="tag a">TRADE</span><span class="g"><b>Le Parquet</b><span class="muted">Six marchés, 200 $ fictifs. Achète, revends, lis les règles, surveille l'oracle. Le hasard s'en mêle, comme en vrai.</span></span>
+    <span class="rec">Record<b>${b.pq!=null? b.pq+" $":"—"}</b></span></button>
+  <button class="game" data-act="vfStart"><span class="tag c">60 s</span><span class="g"><b>Vrai ou Faux éclair</b><span class="muted">Un maximum d'affirmations en une minute. Les séries de bonnes réponses multiplient les points.</span></span>
+    <span class="rec">Record<b>${b.vf!=null? b.vf+" pts":"—"}</b></span></button>
+  <button class="game" data-act="asStart"><span class="tag b">DUO</span><span class="g"><b>Les Paires</b><span class="muted">Relie chaque mot du cours à sa définition, le plus vite possible. Une erreur coûte 5 secondes.</span></span>
+    <span class="rec">Record<b>${b.as!=null? fmtT(b.as):"—"}</b></span></button>
+  <p class="muted small">Jeu pédagogique : argent fictif, aucun conseil en investissement.</p>`;
+}
+
+/* ---------- Vrai ou Faux ---------- */
+function vfStart(){ S.vf={deck:shuffle(VF.length), i:0, t:60, score:0, streak:0, ok:0, n:0, miss:[], wait:false, last:""}; S.view="vf"; }
+const mult = () => Math.min(4, 1+Math.floor(S.vf.streak/3));
+function vVF(){
+  const g=S.vf, st=VF[g.deck[g.i]];
+  app.innerHTML = `
+  <div class="bar"><div class="hud"><span>Temps <b id="vt">${Math.ceil(g.t)}</b> s</span><span>Score <b>${g.score}</b></span><span class="muted">Série <b>${g.streak}</b> · ×${mult()}</span></div>
+  <button class="link" data-act="home">Quitter</button></div>
+  <div class="prog"><i id="vb" style="width:${g.t/60*100}%"></i></div>
+  <div class="card">${st[0]}</div>
+  ${g.wait ? `<div class="fb ko" role="status"><span class="res">Raté · c'était ${st[1]?"VRAI":"FAUX"}</span><span>${st[2]}</span></div>
+     <button class="btn" data-act="vfNext" id="go">Continuer</button><p class="muted small">Le chrono est en pause pendant que tu lis.</p>`
+   : `<div class="vf"><button class="f" data-act="vfAns" data-v="0">FAUX</button><button class="v" data-act="vfAns" data-v="1">VRAI</button></div>
+     <p class="muted small">${g.last || "Au clavier : flèche gauche pour FAUX, flèche droite pour VRAI."}</p>`}`;
+  if(g.wait) document.getElementById("go").focus({preventScroll:true});
+}
+function vfAns(v){
+  const g=S.vf, st=VF[g.deck[g.i]]; g.n++;
+  if(v===st[1]){ sGood(); const p=10*mult(); g.score+=p; g.streak++; g.ok++; g.last="Juste, +"+p+" points."; vfAdvance(); }
+  else { sBad(); g.streak=0; g.miss.push(g.deck[g.i]); g.wait=true; }
+}
+function vfAdvance(){ const g=S.vf; g.wait=false; g.i++; if(g.i>=g.deck.length) vfEnd(); }
+function vfEnd(){ sWin(); const g=S.vf; if(S.best.vf==null || g.score>S.best.vf){ S.best.vf=g.score; save(); } S.view="vfEnd"; }
+function vVFEnd(){
+  const g=S.vf;
+  app.innerHTML = `
+  <section class="panel"><span class="eyebrow">Vrai ou Faux éclair · terminé</span>
+  <div class="row"><div><div class="big">${g.score}</div><span class="muted">points</span></div><div><div class="big">${g.ok} / ${g.n}</div><span class="muted">bonnes réponses</span></div></div>
+  <p>${g.score>=S.best.vf && g.n ? "C'est ton record." : "Record à battre : "+S.best.vf+" points."}</p>
+  <div class="bar" style="justify-content:flex-start"><button class="btn" data-act="vfStart">Rejouer</button><button class="link" data-act="home">Autres jeux</button></div></section>
+  ${g.miss.length ? `<section class="panel"><h3>À revoir</h3>${g.miss.map(i=>`<div class="miss"><b>${VF[i][0]}</b><span><span class="${VF[i][1]?"oui":"non"}">${VF[i][1]?"Vrai":"Faux"}.</span> ${VF[i][2]}</span></div>`).join("")}</section>`:""}`;
+}
+
+/* ---------- Les Paires ---------- */
+function asStart(){ S.as={pool:shuffle(NOTIONS.length).slice(0,15), r:0, t:0, err:0, sel:null, done:[], bad:null, ex:"", defs:[]}; asRound(); S.view="as"; }
+function asRound(){ const g=S.as, ids=g.pool.slice(g.r*5, g.r*5+5); g.terms=ids; g.defs=shuffle(5).map(k=>ids[k]); g.done=[]; g.sel=null; g.bad=null; }
+function vAS(){
+  const g=S.as;
+  app.innerHTML = `
+  <div class="bar"><div class="hud"><span>Manche <b>${g.r+1}</b> / 3</span><span>Chrono <b id="at">${fmtT(g.t)}</b></span><span class="muted">Erreurs <b>${g.err}</b></span></div>
+  <button class="link" data-act="home">Quitter</button></div>
+  <p class="muted small">Choisis un mot, puis touche sa définition.</p>
+  <div class="chips">${g.terms.map(i=>`<button class="chip" data-act="asTerm" data-i="${i}" aria-pressed="${g.sel===i}" ${g.done.includes(i)?"disabled":""}>${NOTIONS[i][0]}</button>`).join("")}</div>
+  <div class="stack" style="gap:8px">${g.defs.map(i=> g.done.includes(i)
+     ? `<div class="def done"><b>${NOTIONS[i][0]}</b> · ${NOTIONS[i][1]}</div>`
+     : `<button class="def ${g.bad===i?"bad":""}" data-act="asDef" data-i="${i}">${NOTIONS[i][1]}</button>`).join("")}</div>
+  <p class="small" role="status">${g.ex}</p>`;
+}
+function asDef(i){
+  const g=S.as; g.bad=null;
+  if(g.sel==null){ g.ex="Choisis d'abord un mot dans la liste du haut."; return; }
+  if(g.sel===i){ sGood(); g.done.push(i); g.sel=null; g.ex="Juste. Exemple : "+NOTIONS[i][2]+".";
+    if(g.done.length===5){ g.r++; if(g.r===3){ sWin(); if(S.best.as==null || g.t<S.best.as){ S.best.as=Math.round(g.t); save(); } S.view="asEnd"; } else asRound(); } }
+  else { sBad(); g.err++; g.t+=5; g.bad=i; g.ex="Ce n'est pas ça : 5 secondes de pénalité. Réessaie."; }
+}
+function vASEnd(){
+  const g=S.as;
+  app.innerHTML = `
+  <section class="panel"><span class="eyebrow">Les Paires · terminé</span>
+  <div class="row"><div><div class="big">${fmtT(g.t)}</div><span class="muted">temps final</span></div><div><div class="big">${g.err}</div><span class="muted">erreurs</span></div></div>
+  <p>${Math.round(g.t)<=S.best.as ? "C'est ton record." : "Record à battre : "+fmtT(S.best.as)+"."} Tu as révisé 15 notions sur 24 : chaque partie en tire d'autres.</p>
+  <div class="bar" style="justify-content:flex-start"><button class="btn" data-act="asStart">Rejouer</button><button class="link" data-act="home">Autres jeux</button></div></section>
+  <section class="panel"><h3>Les notions de cette partie</h3>${g.pool.map(i=>`<div class="miss"><b>${NOTIONS[i][0]}</b><span>${NOTIONS[i][1]}</span><span class="muted">${NOTIONS[i][2]}</span></div>`).join("")}</section>`;
+}
+
+/* ---------- Le Parquet ---------- */
+function pqStart(){ S.pq={cap:200, si:0, node:"a", ctx:{}, out:null, hist:[], bail:false}; S.view="pq"; }
+function vPQ(){
+  const g=S.pq, sc=SC[g.si], nd=sc.nodes[g.node], m=nd.m||sc.m;
+  const mk = sc.book ? `<div class="mkt"><div class="o">Meilleur acheteur (bid)<b>0,${sc.book[0]} $</b></div><div class="n">Meilleur vendeur (ask)<b>0,${sc.book[1]} $</b></div></div>`
+                     : `<div class="mkt"><div class="o">OUI<b>0,${String(m[0]).padStart(2,"0")} $</b></div><div class="n">NON<b>0,${String(m[1]).padStart(2,"0")} $</b></div></div>`;
+  app.innerHTML = `
+  <div class="bar"><div class="hud"><span>Marché <b>${g.si+1}</b> / ${SC.length}</span><span>Capital <b>${g.cap} $</b></span></div><button class="link" data-act="home">Quitter</button></div>
+  <div class="prog"><i style="width:${(g.si+(g.out?1:0))/SC.length*100}%"></i></div>
+  <section class="panel"><span class="eyebrow">${sc.t}</span><h2>${sc.q}</h2>${mk}
+  ${g.out ? `<div class="fb ${g.out.d>=0?"ok":"ko"}" role="status"><span class="res">${sgn(g.out.d)}</span><span>${g.out.r}</span></div>
+      <div class="stack" style="gap:4px"><span class="eyebrow">À retenir · ${sc.c}</span><p>${sc.lesson}</p></div>
+      ${g.bail?`<p class="muted small">Ton capital est passé sous 100 $ : un sponsor te renfloue à 100 $ pour la suite.</p>`:""}
+      <button class="btn" data-act="pqNext" id="go">${g.si===SC.length-1?"Voir mon bilan":"Marché suivant"}</button>`
+   : `<p>${nd.x}</p><div class="stack" style="gap:8px">${nd.ch.map((c,k)=>`<button class="choice" data-act="pqPick" data-k="${k}">${c.l}${c.s?`<span>${c.s}</span>`:""}</button>`).join("")}</div>`}
+  </section>`;
+  if(g.out) document.getElementById("go").focus({preventScroll:true});
+}
+function pqPick(k){
+  const g=S.pq, sc=SC[g.si], res=sc.nodes[g.node].ch[k].f(g.ctx);
+  if(res.to){ g.node=res.to; return; }
+  g.out=res; (res.d>0?sGood:res.d<0?sBad:()=>{})(); g.cap+=res.d; g.hist.push(res.d); g.bail=false;
+  if(g.cap<100 && g.si<SC.length-1){ g.cap=100; g.bail=true; }
+}
+function pqNext(){
+  const g=S.pq;
+  if(g.si<SC.length-1){ g.si++; g.node="a"; g.ctx={}; g.out=null; g.bail=false; }
+  else { sWin(); if(S.best.pq==null || g.cap>S.best.pq){ S.best.pq=g.cap; save(); } S.view="pqEnd"; }
+}
+function vPQEnd(){
+  const g=S.pq, c=g.cap, rk = c>=450?"Requin du parquet" : c>=300?"Fin analyste" : c>=200?"Trader prudent" : "Apprenti";
+  app.innerHTML = `
+  <section class="panel"><span class="eyebrow">Le Parquet · clôture</span>
+  <div class="row"><div><div class="big">${c} $</div><span class="muted">capital final (départ : 200 $)</span></div><div><h2>${rk}</h2><span class="muted">ton rang</span></div></div>
+  <p>${c>=S.best.pq ? "C'est ton record." : "Record à battre : "+S.best.pq+" $."} Certains résultats dépendent du hasard : rejoue, les marchés ne tourneront pas pareil.</p>
+  ${SC.map((s,i)=>`<div class="line"><span><b>${s.t}</b><br><span class="muted small">${s.c}</span></span><b class="mono ${g.hist[i]>=0?"oui":"non"}">${sgn(g.hist[i])}</b></div>`).join("")}
+  <div class="bar" style="justify-content:flex-start"><button class="btn" data-act="pqStart">Rejouer</button><button class="link" data-act="home">Autres jeux</button></div></section>`;
+}
+
+/* ---------- Fiches ---------- */
+function vFiches(){
+  app.innerHTML = `
+  <div class="bar"><h2>Fiches de révision</h2><button class="btn" data-act="back">${S.prev==="home"?"Retour":"Reprendre le jeu"}</button></div>
+  <input class="search" id="search" type="search" placeholder="Chercher un mot : spread, oracle, Sybil…" aria-label="Chercher dans les fiches">
+  <div class="stack" style="gap:8px" id="list">${NOTIONS.map(n=>`<div class="fiche"><b>${n[0]}</b><span>${n[1]}.</span><span class="muted small">Exemple : ${n[2]}.</span></div>`).join("")}</div>`;
+  document.getElementById("search").addEventListener("input", e=>{
+    const q=e.target.value.toLowerCase();
+    document.querySelectorAll("#list .fiche").forEach(f=>{ f.hidden = !f.textContent.toLowerCase().includes(q); });
+  });
+}
+
+/* ---------- Événements ---------- */
+document.addEventListener("click", ev=>{
+  const b=ev.target.closest("[data-act]"); if(!b || b.disabled) return;
+  const a=b.dataset.act;
+  if(a==="home") S.view="home";
+  else if(a==="snd"){ SOUND=!SOUND; try{localStorage.setItem("arcade-son",SOUND?"1":"0")}catch(e){} sndLabel(); return; }
+  else if(a==="fiches"){ S.prev=S.view; S.view="fiches"; }
+  else if(a==="back") S.view=S.prev;
+  else if(a==="vfStart") vfStart();
+  else if(a==="vfAns") vfAns(b.dataset.v==="1");
+  else if(a==="vfNext") vfAdvance();
+  else if(a==="asStart") asStart();
+  else if(a==="asTerm"){ S.as.sel=+b.dataset.i; S.as.bad=null; }
+  else if(a==="asDef") asDef(+b.dataset.i);
+  else if(a==="pqStart") pqStart();
+  else if(a==="pqPick") pqPick(+b.dataset.k);
+  else if(a==="pqNext") pqNext();
+  render();
+  if(/Start|home|fiches|back|pqNext/.test(a)) window.scrollTo(0,0);
+});
+document.addEventListener("keydown", ev=>{
+  if(S.view!=="vf" || S.vf.wait) return;
+  if(ev.key==="ArrowLeft"){ vfAns(false); render(); }
+  else if(ev.key==="ArrowRight"){ vfAns(true); render(); }
+});
+setInterval(()=>{
+  if(!S) return;
+  if(S.view==="vf" && !S.vf.wait){
+    S.vf.t-=.1;
+    if(S.vf.t<=0){ S.vf.t=0; vfEnd(); render(); return; }
+    const t=document.getElementById("vt"), bar=document.getElementById("vb");
+    if(t) t.textContent=Math.ceil(S.vf.t); if(bar) bar.style.width=(S.vf.t/60*100)+"%";
+  } else if(S.view==="as"){
+    S.as.t+=.1; const t=document.getElementById("at"); if(t) t.textContent=fmtT(S.as.t);
+  }
+},100);
+
+start({}); sndLabel();
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+
+</body>
+</html>
